@@ -9,6 +9,21 @@ sc = SparkContext(conf = conf)
 Logger= sc._jvm.org.apache.log4j.Logger
 logger = Logger.getLogger(__name__)
 
+def converPostToPair(post):
+    tuple = ET.fromstring(post)
+    key = tuple.get('OwnerUserId')
+    favoriteCount = float(tuple.get('FavoriteCount', '0'))
+    value = (float(1), favoriteCount)
+    return (key, value)
+
+def createUserPair(user):
+    tuple = ET.fromstring(user)
+    key = tuple.get('Id')
+    upvotes = float(tuple.get('UpVotes'))
+    reputation = float(tuple.get('Reputation'))
+    value = (upvotes, reputation)
+    return (key, value)
+
 
 K = 3
 MAX_ITERATIONS=100
@@ -28,7 +43,7 @@ def min_center(p, curr_centroids):
     min_dist= float("inf")
     min_index = -1
     for i,c in enumerate(curr_centroids):
-        temp_dist = distance_metric(p,c) 
+        temp_dist = distance_metric(p,c)
         if temp_dist< min_dist:
             min_index = i
             min_dist = temp_dist
@@ -50,13 +65,25 @@ def extract_centers(centers):
 def below_threshold(c1s,c2s):
     return all([ distance_metric(c1,c2) < K for c1,c2 in zip(c1s,c2s)])
 
-# MAIN CODE:
-points = sc.parallelize(testpoints.makePoints())
+#Get the user data
+user = sc.textFile('/data/stackoverflow/Users').filter(lambda x : 'Id' in x);
+userPair = user.filter(lambda x : all(ord(c) < 128 for c in x)).map(createUserPair)
 
-curr_centroids = points.takeSample(False,K)
+#Get the post data
+posts = sc.textFile('/data/stackoverflow/Posts').filter(lambda x : 'Id' in x)
+postPair = posts.filter(lambda x : all(ord(c) < 128 for c in x)).map(converPostToPair).reduceByKey(lambda x,y : tuple(map(operator.add, x, y)))
+
+joinedData = userPair.join(postPair)
+
+# Gives out : (userid, total upvotes of user / total post of user, reputation, total favoriteCount, total fav. count / total posts)
+finalData = joinedData.map(lambda x : (x[0], x[1][0][0] / x[1][1][0], x[1][0][1], x[1][1][1], x[1][1][1] / x[1][1][0]))
+
+# MAIN CODE:
+
+curr_centroids = finalData.takeSample(False,K)
 
 # all points are assigned to index 0 center intially
-curr_points_assignment = points.map(lambda a: (0,a))
+curr_points_assignment = finalData.map(lambda a: (0,a))
 
 # for debug/illustration purposes we store the history of centroids
 
