@@ -70,6 +70,9 @@ def extract_centers(centers):
 def below_threshold(c1s,c2s):
     return all([ distance_metric(c1,c2) < THRESHOLD for c1,c2 in zip(c1s,c2s)])
 
+
+
+
 #Get the user data
 user = sc.textFile('/data/stackoverflow/Users').filter(lambda x : 'Id' in x);
 userPair = user.filter(lambda x : all(ord(c) < 128 for c in x)).map(createUserPair)
@@ -122,4 +125,14 @@ for i in range (1,MAX_ITERATIONS):
         break
     
     all_centroids.append(curr_centroids)
-    logger.info("\n\n!!!!!\n {0} \n!!!!!!!!\n".format(all_centroids))
+
+logger.info("\n\n!!!!!\n {0} \n!!!!!!!!\n".format(all_centroids))
+# we have our final centroids let's save the final point assignment in HDFS for further analysis
+last_centroids = all_centroids[-1]
+final_clustering = curr_points_assignment.map(lambda a : (min_center(a[1][1:],last_centroids), a[1][1:]))
+
+
+final_clustering.saveAsTextFile("out/final_data_stackoverflow")
+
+
+
