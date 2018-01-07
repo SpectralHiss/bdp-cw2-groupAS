@@ -68,7 +68,7 @@ def extract_centers(centers):
     return centroid_arr
 
 def below_threshold(c1s,c2s):
-    return all([ distance_metric(c1,c2) < K for c1,c2 in zip(c1s,c2s)])
+    return all([ distance_metric(c1,c2) < THRESHOLD for c1,c2 in zip(c1s,c2s)])
 
 #Get the user data
 user = sc.textFile('/data/stackoverflow/Users').filter(lambda x : 'Id' in x);
@@ -85,11 +85,12 @@ finalData = joinedData.map(lambda x : (x[0], x[1][0][0] / x[1][1][0], x[1][0][1]
 
 # MAIN CODE:
 
-curr_centroids = finalData.takeSample(False,K)
+curr_centroids = map(lambda center: center[1:], finalData.takeSample(False,K))
 
 # all points are assigned to index 0 center intially
-curr_points_assignment = finalData.map(lambda a: (0,a))
+curr_points_assignment = finalData.map(lambda datapoint_w_id: (0,datapoint_w_id))
 curr_points_assignment.checkpoint()
+curr_points_assignment.count()
 
 # for debug/illustration purposes we store the history of centroids
 
@@ -102,7 +103,7 @@ for i in range (1,MAX_ITERATIONS):
     #M step
     #   mean is not associative, hence we need to run the counts seperately and the sum
     # for each cluster using the aggregatebyK functionality of spark
-    init_accum = (0,[0 for i in range(K)])
+    init_accum = (0,[0,0,0,0])
 
     # first lambda is inter-parition func, partial sums and counts
     # second lambda merge partial sums and counts.
@@ -119,6 +120,6 @@ for i in range (1,MAX_ITERATIONS):
     if(len(all_centroids) > 1 and below_threshold(curr_centroids,all_centroids[-1])):
         logger.info("bailing early due to close center {0}".format(curr_centroids))
         break
+    
     all_centroids.append(curr_centroids)
-
-logger.info("\n\n!!!!!\n {0} \n!!!!!!!!\n".format(all_centroids))
+    logger.info("\n\n!!!!!\n {0} \n!!!!!!!!\n".format(all_centroids))
