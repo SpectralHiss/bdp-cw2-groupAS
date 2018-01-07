@@ -1,10 +1,15 @@
 from pyspark import SparkConf, SparkContext
 import testpoints
 import itertools
+import xml.etree.ElementTree as ET
+import operator
+
 
 conf = (SparkConf()
          .setAppName("KMEAN"))
 sc = SparkContext(conf = conf)
+
+sc.setCheckpointDir("out/stackoverflowcheckpoints/")
 
 Logger= sc._jvm.org.apache.log4j.Logger
 logger = Logger.getLogger(__name__)
@@ -84,6 +89,7 @@ curr_centroids = finalData.takeSample(False,K)
 
 # all points are assigned to index 0 center intially
 curr_points_assignment = finalData.map(lambda a: (0,a))
+curr_points_assignment.checkpoint()
 
 # for debug/illustration purposes we store the history of centroids
 
@@ -91,7 +97,8 @@ all_centroids = []
 
 for i in range (1,MAX_ITERATIONS):
     #E step
-    Estep = curr_points_assignment.map(lambda a : (min_center(a[1],curr_centroids), a[1]))
+    # please note that we need to slice the datapoint to skip userid
+    Estep = curr_points_assignment.map(lambda a : (min_center(a[1][1:],curr_centroids), a[1][1:]))
     #M step
     #   mean is not associative, hence we need to run the counts seperately and the sum
     # for each cluster using the aggregatebyK functionality of spark
