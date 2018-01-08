@@ -30,9 +30,9 @@ def createUserPair(user):
     return (key, value)
 
 
-K = 3
-MAX_ITERATIONS=100
-THRESHOLD=0.01
+K = 7
+MAX_ITERATIONS=15
+THRESHOLD=0.1
 
 # HELPERS
 def distance_metric(x1,x2):
@@ -92,8 +92,6 @@ curr_centroids = map(lambda center: center[1:], finalData.takeSample(False,K))
 
 # all points are assigned to index 0 center intially
 curr_points_assignment = finalData.map(lambda datapoint_w_id: (0,datapoint_w_id))
-curr_points_assignment.checkpoint()
-curr_points_assignment.count()
 
 # for debug/illustration purposes we store the history of centroids
 
@@ -123,13 +121,14 @@ for i in range (1,MAX_ITERATIONS):
     if(len(all_centroids) > 1 and below_threshold(curr_centroids,all_centroids[-1])):
         logger.info("bailing early due to close center {0}".format(curr_centroids))
         break
-    
     all_centroids.append(curr_centroids)
 
 logger.info("\n\n!!!!!\n {0} \n!!!!!!!!\n".format(all_centroids))
 # we have our final centroids let's save the final point assignment in HDFS for further analysis
 last_centroids = all_centroids[-1]
-final_clustering = curr_points_assignment.map(lambda a : (min_center(a[1][1:],last_centroids), a[1][1:]))
+logger.info("\n\n!!!!!\n Last centroids (indexes are important) {0} \n!!!!!!!!\n".format(last_centroids))
+
+final_clustering = curr_points_assignment.map(lambda a : [a[1][1:]] + [min_center(a[1][1:],last_centroids)])
 
 
 final_clustering.saveAsTextFile("out/final_data_stackoverflow")

@@ -7,6 +7,6 @@ ITLCONN="ITL"
 
 rsync -a $TOP_DIR/ ITL:/homes/$USERNAME/bitbucket/CW2
 
-ssh -t -A $ITLCONN ssh -t -A itl107 /homes/$USERNAME/bitbucket/CW2/scripts/run.sh
+ssh -t -A $ITLCONN ssh -t -A itl305 /homes/$USERNAME/bitbucket/CW2/scripts/run.sh
 
 
